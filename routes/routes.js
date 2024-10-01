@@ -1,8 +1,8 @@
 const {Router } = require("express");
-const { getRestaurants } = require("../functions/functions");
+const { getSearchData } = require("../functions/functions");
 const mainRoutes = Router();
 
 
-mainRoutes.post("/getRestaurants",getRestaurants);
+mainRoutes.post("/getRestaurants",getSearchData);
 
 module.exports = mainRoutes;

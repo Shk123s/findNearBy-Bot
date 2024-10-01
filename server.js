@@ -10,7 +10,7 @@ app.use("/bot/api/v1",mainRoutes);
 //start the bot.
 botCaller();
 
-//Database connection.
+// Database connection.
 dbconnection.connect();
 
 app.listen(3000, () => {
