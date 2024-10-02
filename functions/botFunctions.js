@@ -92,7 +92,7 @@ const botCaller = async (req, res) => {
             .row()
             .text("Hotel", "hotel")
             .row()
-            .text("Bar", "bar");
+            .text("Cafe", "cafe");
 
           await ctx.reply("Please choose an option:", {
             reply_markup: inlineKeyboardForOptions,
@@ -104,7 +104,7 @@ const botCaller = async (req, res) => {
       }
     });
 
-    bot.callbackQuery(/(restaurant|hotel|bar)/, async (ctx) => {
+    bot.callbackQuery(/(restaurant|hotel|cafe)/, async (ctx) => {
       try {
         const userId = ctx.update.callback_query.from.id;
         const selection = ctx.callbackQuery.data;
@@ -119,9 +119,9 @@ const botCaller = async (req, res) => {
             responseText =
               "You selected Hotel. Please wait while we fetch hotel options...";
             break;
-          case "bar":
+          case "cafe":
             responseText =
-              "You selected Bar. Please wait while we fetch bar options...";
+              "You selected Cafe. Please wait while we fetch cafe options...";
             break;
           default:
             responseText = "Invalid selection.";
@@ -142,7 +142,7 @@ const botCaller = async (req, res) => {
         const [userResults, userResultsError] = await getSearchData(userId);
         console.log(userResults,userResultsError)
         if (userResults) {
-          await ctx.reply(userResults);
+          await ctx.reply(userResults, { parse_mode: "HTML" });
         } else {
           await ctx.reply("No results found!.");
         }        
