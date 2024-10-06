@@ -11,23 +11,20 @@ const botCaller = async () => {
       "request_location"
     );
     // .text("Enter manually!", "enter_manually");
-
     bot.command("start", async (ctx) => {
       const userId = ctx.update.message.from.id || 11111;
       const username = ctx.update.message.from.username || "default_username";
-      const firstName =
-        ctx.update.message.from.first_name || "default_first_name";
+      const firstName = ctx.update.message.from.first_name || "default_first_name";
+    
       if (userId) {
         try {
+          // Check if the user exists in the database
           const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
-          const [existingUser] = await connection
-            .promise()
-            .execute(selectQuery, [userId]);
-
+          const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
+    
           if (existingUser.length > 0) {
-            const userInfo = existingUser[0];
-            const userMessage = `Welcome back ${username}! Once again select the options.`;
-
+            // If user exists, send a message
+            const userMessage = `Welcome back ${username}! Please select an option.`;
             try {
               await ctx.reply(userMessage);
               await ctx.reply("Please share your location:", {
@@ -36,41 +33,35 @@ const botCaller = async () => {
             } catch (error) {
               if (error.error_code === 403 && error.description.includes("user is deactivated")) {
                 console.error(`User ${userId} is deactivated.`);
+                // Optionally remove or mark user as deactivated in the database
+                const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
+                await connection.promise().execute(deleteUserQuery, [userId]);
+    
+                // Skip further communication with this user
               } else {
                 console.error("Failed to send message:", error);
-                ctx.reply("Failed to send message:");
+                await ctx.reply("Failed to send a message. Please try again later.");
               }
             }
           } else {
-            try {
-              const insertQuery =
-                "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
-              await connection
-                .promise()
-                .execute(insertQuery, [userId, username, firstName]);
-
-              const introductionMessage = `Hello ${firstName}! I'm a Telegram bot.
-              I'm powered by shaqeeb, the next-generation serverless computing platform for Finding NearBy.`;
-
-              await ctx.reply(introductionMessage);
-              await ctx.reply("Please share your location:", {
-                reply_markup: locationKeyboard,
-              });
-            } catch (error) {
-              console.log(error);
-              ctx.reply(
-                "Internal Server Error.Please try again after some time.!"
-              );
-            }
+            // If user doesn't exist, insert into the database
+            const insertQuery = "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
+            await connection.promise().execute(insertQuery, [userId, username, firstName]);
+    
+            const introductionMessage = `Hello ${firstName}! I'm a Telegram bot. I'm powered by shaqeeb, the next-generation platform for finding nearby places.`;
+    
+            await ctx.reply(introductionMessage);
+            await ctx.reply("Please share your location:", {
+              reply_markup: locationKeyboard,
+            });
           }
         } catch (outerError) {
-          console.error("Operation failed:", outerError);
-          ctx.reply(
-            "There was an error processing your request. Please try again later."
-          );
+          console.error("Error processing user start command:", outerError);
+          await ctx.reply("There was an error processing your request. Please try again later.");
         }
       }
     });
+    
 
     bot.callbackQuery("request_location", async (ctx) => {
       ctx.reply("Please share your location:", {
@@ -91,7 +82,7 @@ const botCaller = async () => {
 
     bot.on("message:location", async (ctx) => {
       try {
-        const userId = ctx.update.message.from.id;
+        userId = ctx.update.message.from.id;
         const { latitude, longitude } = ctx.message.location;
 
         if (ctx?.message?.location) {
@@ -122,9 +113,9 @@ const botCaller = async () => {
         }
       } catch (error) {
         console.log(error);
-        ctx.reply(
-          "There was an error processing your request. Please try again later."
-        );
+        const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
+        await connection.promise().execute(deleteUserQuery, [userId]);
+        ctx.reply("Internal server error,please try again.");
       }
     });
 
