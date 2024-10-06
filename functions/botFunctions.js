@@ -1,20 +1,22 @@
-const { Bot, Keyboard, InlineKeyboard } = require("grammy");
+const { Bot, Markup,InlineKeyboard } = require("grammy");
 const token = process.env.TOKEN;
 const bot = new Bot(token);
 const connection = require("../database");
-const {  getSearchData } = require("./functions");
+const { getSearchData } = require("./functions");
 
-const botCaller = async (req, res) => {
+const botCaller = async () => {
   try {
-    const locationKeyboard = new InlineKeyboard()
-      .text("📍 Share your location", "request_location")
-      .text("Enter manually!", "enter_manually");
+    const locationKeyboard = new InlineKeyboard().text(
+      "📍 Share your location",
+      "request_location"
+    );
+    // .text("Enter manually!", "enter_manually");
 
     bot.command("start", async (ctx) => {
-      const userId = ctx.update.message.from.id;
-      const username = ctx.update.message.from.username;
-      const firstName = ctx.update.message.from.first_name;
-
+      const userId = ctx.update.message.from.id || 11111;
+      const username = ctx.update.message.from.username || "default_username";
+      const firstName =
+        ctx.update.message.from.first_name || "default_first_name";
       if (userId) {
         try {
           const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
@@ -24,28 +26,45 @@ const botCaller = async (req, res) => {
 
           if (existingUser.length > 0) {
             const userInfo = existingUser[0];
-            const userMessage = `Welcome back ${username}!.Once again select the options `;
-            await ctx.reply(userMessage);
+            const userMessage = `Welcome back ${username}! Once again select the options.`;
 
-            await ctx.reply("Please share your location:", {
-              reply_markup: locationKeyboard,
-            });
+            try {
+              await ctx.reply(userMessage);
+              await ctx.reply("Please share your location:", {
+                reply_markup: locationKeyboard,
+              });
+            } catch (error) {
+              if (error.error_code === 403 && error.description.includes("user is deactivated")) {
+                console.error(`User ${userId} is deactivated.`);
+              } else {
+                console.error("Failed to send message:", error);
+                ctx.reply("Failed to send message:");
+              }
+            }
           } else {
-            const insertQuery =
-              "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
-            const [userIntro] = await connection
-              .promise()
-              .execute(insertQuery, [userId, username, firstName]);
+            try {
+              const insertQuery =
+                "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
+              await connection
+                .promise()
+                .execute(insertQuery, [userId, username, firstName]);
 
-            if (userIntro.affectedRows == 1) {
               const introductionMessage = `Hello ${firstName}! I'm a Telegram bot.
-              I'm powered by shaqeeb, the next-generation serverless computing platform for Budget Management System.
-              Please select the options.`;
-              ctx.reply(introductionMessage);
+              I'm powered by shaqeeb, the next-generation serverless computing platform for Finding NearBy.`;
+
+              await ctx.reply(introductionMessage);
+              await ctx.reply("Please share your location:", {
+                reply_markup: locationKeyboard,
+              });
+            } catch (error) {
+              console.log(error);
+              ctx.reply(
+                "Internal Server Error.Please try again after some time.!"
+              );
             }
           }
-        } catch (error) {
-          console.error("Database operation failed:", error);
+        } catch (outerError) {
+          console.error("Operation failed:", outerError);
           ctx.reply(
             "There was an error processing your request. Please try again later."
           );
@@ -65,17 +84,17 @@ const botCaller = async (req, res) => {
       });
     });
 
-    // later on will see for manually.
-    bot.callbackQuery("enter_manually", (ctx) => {
-      ctx.reply("Please enter the location.:");
-    });
+    // // later on will see for manually.
+    // bot.callbackQuery("enter_manually", (ctx) => {
+    //   ctx.reply("Please enter the location.:");
+    // });
 
     bot.on("message:location", async (ctx) => {
       try {
         const userId = ctx.update.message.from.id;
         const { latitude, longitude } = ctx.message.location;
 
-        if (ctx.message.location) {
+        if (ctx?.message?.location) {
           const updateQuery = `
         UPDATE user_search 
         SET latitude = ?, longitude = ?
@@ -92,7 +111,10 @@ const botCaller = async (req, res) => {
             .row()
             .text("Hotel", "hotel")
             .row()
-            .text("Cafe", "cafe");
+            .text("Cafe", "cafe")
+            .row()
+            .text("Gym", "gym")
+           
 
           await ctx.reply("Please choose an option:", {
             reply_markup: inlineKeyboardForOptions,
@@ -100,11 +122,13 @@ const botCaller = async (req, res) => {
         }
       } catch (error) {
         console.log(error);
-        // ctx.reply("Internal Server Error location:", error);
+        ctx.reply(
+          "There was an error processing your request. Please try again later."
+        );
       }
     });
 
-    bot.callbackQuery(/(restaurant|hotel|cafe)/, async (ctx) => {
+    bot.callbackQuery(/(restaurant|hotel|cafe|gym)/, async (ctx) => {
       try {
         const userId = ctx.update.callback_query.from.id;
         const selection = ctx.callbackQuery.data;
@@ -123,34 +147,54 @@ const botCaller = async (req, res) => {
             responseText =
               "You selected Cafe. Please wait while we fetch cafe options...";
             break;
+          case "gym":
+            responseText =
+              "You selected Gym. Please wait while we fetch gym options...";
+            break;
           default:
             responseText = "Invalid selection.";
         }
 
         const updateQuery = ` UPDATE user_search SET search_type =  ? WHERE user_id = ? `;
 
-        const [userUpdationDetails] = await connection
-          .promise()
-          .execute(updateQuery, [selection, userId]);
+        const [userUpdationDetails] = await connection.promise().execute(updateQuery, [selection, userId]);
 
-          if (responseText) {
-            await ctx.reply(responseText);
-          } else {
-            await ctx.reply("Sorry, no valid selection.");
-          }
+        if (responseText) {
+          await ctx.reply(responseText);
+        } else {
+          await ctx.reply("Sorry, no valid selection.");
+        }
 
         const [userResults, userResultsError] = await getSearchData(userId);
-        console.log(userResults,userResultsError)
-        if (userResults) {
-          await ctx.reply(userResults, { parse_mode: "HTML" });
+
+        if (userResultsError) {
+          await ctx.reply( "An error occurred while fetching the search results. Please try again later." );
+
+        } else if (userResults && userResults.length > 0) {
+              for (const place of userResults) {
+
+             const caption = `
+             <b>             🟡 ${place.name}          </b>\n
+             📍 <u>Address:</u> ${place.address}.\n
+             ⭐ <u>Category:</u> ${place.category}\n
+             📏 <u>Distance:</u> ${place.distance} m `;
+
+              const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;
+
+              const mapKeyboard = new InlineKeyboard().url('Get Directions', mapsUrl);
+            
+              await ctx.replyWithPhoto(place.imageUrl, {
+                caption: caption,
+                parse_mode: "HTML",
+                reply_markup: mapKeyboard
+              });
+            
+          }
         } else {
-          await ctx.reply("No results found!.");
-        }        
-      
-        
+          await ctx.reply("No results found.");
+        }
       } catch (error) {
-        console.log(error,"errorrr");
-        ctx.reply("Internal Server Error selection options:", error);
+        ctx.reply( "There was an error processing your request. Please try again later.");
       }
     });
 
