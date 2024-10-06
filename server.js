@@ -3,7 +3,7 @@ require("dotenv").config();
 const app = express();
 const dbconnection = require("./database");
 const mainRoutes = require("./routes/routes");
-const botCaller = require("./functions/BotFunctions");
+const botCaller = require("./functions/botFunctions");
 
 app.use("/bot/api/v1",mainRoutes);
 
