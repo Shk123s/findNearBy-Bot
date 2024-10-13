@@ -44,7 +44,7 @@ const botCaller = async () => {
               }
             }
           } else {
-            // If user doesn't exist, insert into the database
+  
             const insertQuery = "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
             await connection.promise().execute(insertQuery, [userId, username, firstName]);
     
@@ -58,7 +58,14 @@ const botCaller = async () => {
         } catch (outerError) {
           console.error("Error processing user start command:", outerError);
           await ctx.reply("There was an error processing your request. Please try again later.");
+          
+          if (error.error_code === 403) {
+            console.error(`User ${userId} is deactivated.`);
+
+            const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
+            await connection.promise().execute(deleteUserQuery, [userId]);
         }
+      }
       }
     });
     
