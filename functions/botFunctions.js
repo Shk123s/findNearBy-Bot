@@ -3,9 +3,12 @@ const token = process.env.TOKEN;
 const bot = new Bot(token);
 const connection = require("../database");
 const { getSearchData } = require("./functions");
-
+ 
 const botCaller = async () => {
-  try {
+  try { 
+    bot.catch((err) => {
+      console.error("Global error occurred:", err);
+    });
     const locationKeyboard = new InlineKeyboard().text(
       "📍 Share your location",
       "request_location"
