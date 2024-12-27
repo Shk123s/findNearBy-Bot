@@ -4,8 +4,8 @@ const app = express();
 const dbconnection = require("./database");
 const mainRoutes = require("./routes/routes");
 const botCaller = require("./functions/botFunctions");
-
-app.get('/healthCheck', async (req, res, next) => {
+//health check
+app.get('/', async (req, res, next) => {
   try {
     res.status(200).json({
       message: '🚀 Backend Service is Up and Running! 💻🌟',
