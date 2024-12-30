@@ -37,5 +37,5 @@ jobs:
           project: "shaqeebshai-findnearby-45"
           entrypoint: "server.js"
           root: "server.js"
-          include: server.js
+          
           
