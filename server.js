@@ -20,6 +20,11 @@ app.get('/', async (req, res, next) => {
   }
 });
 
+// Ping route for Render Cron Job
+app.get("/ping", (req, res) => {
+  res.status(200).json({ message: "Bot is alive" });
+});
+
 app.use("/bot/api/v1",mainRoutes);
 
 //start the bot.
