@@ -1,10 +1,7 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/ping", "dest": "server.js" },
-    { "src": "/bot/api/v1/(.*)", "dest": "server.js" }
-  ],
-  "builds": [
-    { "src": "server.js", "use": "@vercel/node" }
+    { "src": "/ping", "dest": "/api/index.js" },
+    { "src": "/bot/api/v1/(.*)", "dest": "/api/index.js" }
   ]
 }
