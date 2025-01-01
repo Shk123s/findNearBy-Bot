@@ -5,7 +5,7 @@ const dbconnection = require("./database");
 const mainRoutes = require("./routes/routes");
 const botCaller = require("./functions/botFunctions");
 //health check
-app.get('/', async (req, res, next) => {
+app.get('/healthCheck', async (req, res, next) => {
   try {
     res.status(200).json({
       message: '🚀 Backend Service is Up and Running! 💻🌟',
@@ -36,4 +36,3 @@ dbconnection.connect();
 app.listen(3000, () => {
   console.log("Server started on port 3000 && Bot is live");
 });
-
