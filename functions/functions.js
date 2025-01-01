@@ -26,7 +26,7 @@ exports.getSearchData = async (userId) => {
       },
     });
     const data = results.data;
-    const defaultIconUrl = "https://img.freepik.com/free-photo/hotel-beautiful-silhouette-tree-trees_1203-5175.jpg?w=740&t=st=1728111713~exp=1728112313~hmac=f93d6b6b07c1cb72bc47751d9a2bd66cb6a0e1af8b589669c2ea3fe2a7a5b0cd"; 
+    // const defaultIconUrl = "https://img.freepik.com/free-photo/hotel-beautiful-silhouette-tree-trees_1203-5175.jpg?w=740&t=st=1728111713~exp=1728112313~hmac=f93d6b6b07c1cb72bc47751d9a2bd66cb6a0e1af8b589669c2ea3fe2a7a5b0cd"; 
     const userIconUrl = "https://img.freepik.com/premium-vector/colorful-collection-icons-including-house-with-red-orange-background_1187092-69811.jpg?w=740";
    
     const placess = data.results

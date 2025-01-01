@@ -62,9 +62,9 @@ const botCaller = async () => {
           console.error("Error processing user start command:", outerError);
           await ctx.reply("There was an error processing your request. Please try again later.");
           
-          if (error.error_code === 403) {
+          console.log(outerError,error?.error_code === 403)
+          if (error?.error_code === 403) {
             console.error(`User ${userId} is deactivated.`);
-
             const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
             await connection.promise().execute(deleteUserQuery, [userId]);
         }
@@ -94,7 +94,7 @@ const botCaller = async () => {
       try {
         userId = ctx.update.message.from.id;
         const { latitude, longitude } = ctx.message.location;
-
+    
         if (ctx?.message?.location) {
           const updateQuery = `
         UPDATE user_search 
@@ -195,6 +195,7 @@ const botCaller = async () => {
           await ctx.reply("No results found.");
         }
       } catch (error) {
+       console.log(error)
         ctx.reply( "There was an error processing your request. Please try again later.");
       }
     });

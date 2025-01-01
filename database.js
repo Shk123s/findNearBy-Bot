@@ -1,28 +1,39 @@
 const mysql = require("mysql2");
 require("dotenv").config();
 
-const connection = mysql.createConnection({
-  host: process.env.db_LOCALHOST,
-  user: process.env.db_USERNAME,
-  password: process.env.db_PASSWORD,
-  database: process.env.db_DATABASE,
-  port: process.env.db_PORT,
-  connectTimeout: 20000, // Increased timeout to 20 seconds
-});
+let connection;
 
-connection.connect(function (err) {
-  if (err) {
-    console.error("Error connecting to the database:", err.message);
-    connection.end();
-    return;
-  }
-  console.log("db Connected!");
-});
+function handleDisconnect() {
+  connection = mysql.createConnection({
+    host: process.env.db_LOCALHOST,
+    user: process.env.db_USERNAME,
+    password: process.env.db_PASSWORD,
+    database: process.env.db_DATABASE,
+    port: process.env.db_PORT,
+    connectTimeout: 20000,
+  });
 
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-  connection.end();
-  process.exit(1);
-});
+  connection.connect((err) => {
+    if (err) {
+      console.error("Error connecting to the database:", err.message);
+      setTimeout(handleDisconnect, 5000); // Retry after 5 seconds
+    } else {
+      console.log("db Connected!");
+    }
+  });
+
+  connection.on("error", (err) => {
+    console.error("Database error:", err);
+    if (err.code === "PROTOCOL_CONNECTION_LOST") {
+      console.log("Reconnecting to the database...");
+      handleDisconnect();
+    } else {
+      throw err;
+    }
+  });
+}
+
+handleDisconnect(); 
+
 
 module.exports = connection;
