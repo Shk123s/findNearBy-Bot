@@ -1,208 +1,149 @@
-const { Bot, Markup,InlineKeyboard } = require("grammy");
+const { Bot, InlineKeyboard } = require("grammy");
 const token = process.env.TOKEN;
 const bot = new Bot(token);
 const connection = require("../database");
-const { getSearchData } = require("./functions");
- 
+const { getSearchData, getlatlong } = require("./functions");
+
 const botCaller = async () => {
-  try { 
+  try {
     bot.catch((err) => {
       console.error("Global error occurred:", err);
     });
-    const locationKeyboard = new InlineKeyboard().text(
-      "📍 Share your location",
-      "request_location"
-    );
-    // .text("Enter manually!", "enter_manually");
+
     bot.command("start", async (ctx) => {
       const userId = ctx.update.message.from.id || 11111;
       const username = ctx.update.message.from.username || "default_username";
       const firstName = ctx.update.message.from.first_name || "default_first_name";
-    
-      if (userId) {
-        try {
-          // Check if the user exists in the database
-          const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
-          const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
-    
-          if (existingUser.length > 0) {
-            // If user exists, send a message
-            const userMessage = `Welcome back ${username}! Please select an option.`;
-            try {
-              await ctx.reply(userMessage);
-              await ctx.reply("Please share your location:", {
-                reply_markup: locationKeyboard,
-              });
-            } catch (error) {
-              if (error.error_code === 403 && error.description.includes("user is deactivated")) {
-                console.error(`User ${userId} is deactivated.`);
-                // Optionally remove or mark user as deactivated in the database
-                const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
-                await connection.promise().execute(deleteUserQuery, [userId]);
-    
-                // Skip further communication with this user
-              } else {
-                console.error("Failed to send message:", error);
-                await ctx.reply("Failed to send a message. Please try again later.");
-              }
-            }
-          } else {
-  
-            const insertQuery = "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
-            await connection.promise().execute(insertQuery, [userId, username, firstName]);
-    
-            const introductionMessage = `Hello ${firstName}! I'm a Telegram bot. I'm powered by shaqeeb, the next-generation platform for finding nearby places.`;
-    
-            await ctx.reply(introductionMessage);
-            await ctx.reply("Please share your location:", {
-              reply_markup: locationKeyboard,
-            });
-          }
-        } catch (outerError) {
-          console.error("Error processing user start command:", outerError);
-          await ctx.reply("There was an error processing your request. Please try again later.");
-          
-          console.log(outerError,error?.error_code === 403)
-          if (error?.error_code === 403) {
-            console.error(`User ${userId} is deactivated.`);
-            const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
-            await connection.promise().execute(deleteUserQuery, [userId]);
-        }
-      }
-      }
-    });
-    
 
-    bot.callbackQuery("request_location", async (ctx) => {
-      ctx.reply("Please share your location:", {
-        reply_markup: {
-          keyboard: [
-            [{ text: "📍 Share my location", request_location: true }],
-          ],
-          one_time_keyboard: true,
-          resize_keyboard: true,
-        },
-      });
-    });
-
-    // // later on will see for manually.
-    // bot.callbackQuery("enter_manually", (ctx) => {
-    //   ctx.reply("Please enter the location.:");
-    // });
-
-    bot.on("message:location", async (ctx) => {
       try {
-        userId = ctx.update.message.from.id;
-        const { latitude, longitude } = ctx.message.location;
-    
-        if (ctx?.message?.location) {
-          const updateQuery = `
-        UPDATE user_search 
-        SET latitude = ?, longitude = ?
-        WHERE user_id = ? `;
+        const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
+        const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
 
-          const [userUpdationDetails] = await connection
-            .promise()
-            .execute(updateQuery, [latitude, longitude, userId]);
+        if (existingUser.length > 0) {
+          await ctx.reply(`Welcome back, ${username}!`);
+          await ctx.reply("Please provide your location and be more specific (e.g., landmark or area district,city,country. like : Byculla station west mumbai india. ).");
+        } else {
+          const insertQuery = "INSERT INTO user_search (user_id, username, first_name) VALUES (?, ?, ?)";
+          await connection.promise().execute(insertQuery, [userId, username, firstName]);
 
-          console.log("User location updated in DB.", userUpdationDetails);
-
-          const inlineKeyboardForOptions = new InlineKeyboard()
-            .text("Restaurant", "restaurant")
-            .row()
-            .text("Hotel", "hotel")
-            .row()
-            .text("Cafe", "cafe")
-            .row()
-            .text("Gym", "gym")
-           
-
-          await ctx.reply("Please choose an option:", {
-            reply_markup: inlineKeyboardForOptions,
-          });
+          await ctx.reply(`Hello ${firstName}! Welcome to the bot.`);
+          await ctx.reply("Please provide your location and be more specific (e.g., landmark or area district,city,country. like : Byculla station west mumbai india. ).");
         }
       } catch (error) {
-        console.log(error);
-        const deleteUserQuery = "DELETE FROM user_search WHERE user_id = ?";
-        await connection.promise().execute(deleteUserQuery, [userId]);
-        ctx.reply("Internal server error,please try again.");
+        console.error("Error in start command:", error);
+        await ctx.reply("There was an error. Please try again later.");
       }
     });
 
-    bot.callbackQuery(/(restaurant|hotel|cafe|gym)/, async (ctx) => {
+    bot.on("message:text", async (ctx) => {
+      const userId = ctx.update.message.from.id;
+      const userInput = ctx.message.text.trim();
+
+      try {
+        const locationData = await getlatlong(userInput); 
+ 
+        const { latitude, longitude } = locationData;
+        if ( latitude && longitude) {
+   
+          const updateQuery = `
+            UPDATE user_search
+            SET latitude = ?, longitude = ?
+            WHERE user_id = ?`;
+          await connection.promise().execute(updateQuery, [latitude, longitude, userId]);
+
+          const inlineKeyboardForOptions = new InlineKeyboard()
+          .text("Restaurant", "restaurant")
+          .text("Hotel", "hotel")
+          .text("Cafe", "cafe")
+          .row()
+          .text("Gym", "gym")
+          .text("Hospital", "hospital")
+          .text("Pharmacy", "pharmacy")
+          .row()
+          .text("Park", "park")
+          .text("ATM", "atm")
+          .text("Mall", "mall")
+          .row()
+          .text("Gas Station", "gas_station")
+          .text("Movie Theater", "movie_theater")
+          .text("Supermarket", "supermarket");
+
+          await ctx.reply("Received! Great😊. Please choose an option:", {
+            reply_markup: inlineKeyboardForOptions,
+          });
+        } else {
+          await ctx.reply("Could not find the location. Please be more specific area or landmark,state,city and country.");
+        }
+      } catch (error) {
+        console.error("Error processing location input:", error);
+        await ctx.reply("There was an error. Please try again later.");
+      }
+    });
+
+    bot.callbackQuery(  /(restaurant|hotel|cafe|gym|hospital|pharmacy|park|atm|mall|gas_station|movie_theater|supermarket)/, async (ctx) => {
       try {
         const userId = ctx.update.callback_query.from.id;
         const selection = ctx.callbackQuery.data;
 
-        let responseText = "";
-        switch (selection) {
-          case "restaurant":
-            responseText =
-              "You selected Restaurant. Please wait while we fetch restaurant options...";
-            break;
-          case "hotel":
-            responseText =
-              "You selected Hotel. Please wait while we fetch hotel options...";
-            break;
-          case "cafe":
-            responseText =
-              "You selected Cafe. Please wait while we fetch cafe options...";
-            break;
-          case "gym":
-            responseText =
-              "You selected Gym. Please wait while we fetch gym options...";
-            break;
-          default:
-            responseText = "Invalid selection.";
-        }
-
-        const updateQuery = ` UPDATE user_search SET search_type =  ? WHERE user_id = ? `;
-
-        const [userUpdationDetails] = await connection.promise().execute(updateQuery, [selection, userId]);
-
-        if (responseText) {
-          await ctx.reply(responseText);
-        } else {
-          await ctx.reply("Sorry, no valid selection.");
-        }
+        const updateQuery = `UPDATE user_search SET search_type = ? WHERE user_id = ?`;
+        await connection.promise().execute(updateQuery, [selection, userId]);
 
         const [userResults, userResultsError] = await getSearchData(userId);
 
         if (userResultsError) {
-          await ctx.reply( "An error occurred while fetching the search results. Please try again later." );
-
+          await ctx.reply("An error occurred while fetching the search results. Please try again later.");
         } else if (userResults && userResults.length > 0) {
-              for (const place of userResults) {
+          for (const place of userResults) {
+            const caption = `
+<b>🟡 ${place.name}</b>
+📍 <u>Address:</u> ${place.address}
+🚩 <u>Category:</u> ${place.category}
+⭐ <u>Rating:</u> ${place.rating}
+🔓 <u>Open:</u> ${place.openingHours}
+📏 <u>Distance:</u> ${place.distance}`;
 
-             const caption = `
-             <b>             🟡 ${place.name}          </b>\n
-             📍 <u>Address:</u> ${place.address}.\n
-             ⭐ <u>Category:</u> ${place.category}\n
-             📏 <u>Distance:</u> ${place.distance} m `;
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;
+            const mapKeyboard = new InlineKeyboard().url("Get Directions", mapsUrl);
 
-              const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;
+            await ctx.replyWithPhoto(place.imageUrl, {
+              caption: caption,
+              parse_mode: "HTML",
+              reply_markup: mapKeyboard,
+            });
+          } 
+          const inlineKeyboardForOptions = new InlineKeyboard()
+          .text("Restaurant", "restaurant")
+         .text("Hotel", "hotel")
+        .text("Cafe", "cafe")
+        .row()
+        .text("Gym", "gym")
+        .text("Hospital", "hospital")
+        .text("Pharmacy", "pharmacy")
+        .row()
+        .text("Park", "park")
+        .text("ATM", "atm")
+        .text("Mall", "mall")
+        .row()
+        .text("Gas Station", "gas_station")
+        .text("Movie Theater", "movie_theater")
+        .text("Supermarket", "supermarket");
 
-              const mapKeyboard = new InlineKeyboard().url('Get Directions', mapsUrl);
-            
-              await ctx.replyWithPhoto(place.imageUrl, {
-                caption: caption,
-                parse_mode: "HTML",
-                reply_markup: mapKeyboard
-              });
-            
-          }
+        await ctx.reply("Thank you😊. Please choose an option:", {
+          reply_markup: inlineKeyboardForOptions,
+        });
+
         } else {
-          await ctx.reply("No results found.");
+          await ctx.reply("No results found.Try entering a nearby area or use a more specific location (e.g., landmark or area district,city,country. like : Byculla station west mumbai india. ).");
         }
       } catch (error) {
-       console.log(error)
-        ctx.reply( "There was an error processing your request. Please try again later.");
+        console.error("Error processing callback query:", error);
+        await ctx.reply("There was an error processing your request. Please try again later.");
       }
     });
 
     bot.start();
   } catch (error) {
-    console.log(error);
+    console.error("Error initializing bot:", error);
   }
 };
 
