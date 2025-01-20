@@ -1,9 +1,9 @@
 const {Router } = require("express");
-const {  getlatlongPostman, getSearchDataPostman } = require("../functions/functions");
+const {  getlatlongPostman, getSearchDataPostman, getlatlongPostmanGoogle } = require("../functions/functions");
 const mainRoutes = Router();
 
 
 mainRoutes.post("/getRestaurants",getSearchDataPostman);
-mainRoutes.get("/getlatlong",getlatlongPostman);
+mainRoutes.get("/getlatlong",getlatlongPostmanGoogle);
 
 module.exports = mainRoutes;
