@@ -125,51 +125,52 @@ exports.getlatlongPostman2 = async (req, res) => {
     return res.status(500).json({ error: "An error occurred while fetching lat long" });
   }
 };
-exports.getlatlongPostman = async (req, res) => {
-  const { address } = req.query;
+// exports.getlatlongPostman = async (req, res) => {
+//   const { address } = req.query;
 
-  if (!address) {
-    return res.status(400).json({ error: "Address is required" });
-  }
+//   if (!address) {
+//     return res.status(400).json({ error: "Address is required" });
+//   }
 
-  try {
-    const apiKey = process.env.OPENCAGE_API_KEY;
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`;
+//   try {
+//     const apiKey = process.env.OPENCAGE_API_KEY;
+//     const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`;
 
-    const response = await axios.get(url);
-    const data = response.data;
+//     const response = await axios.get(url);
+//     const data = response.data;
 
-    if (!data.results || data.results.length === 0) {
-      return res.status(404).json({ error: "Address not found" });
-    }
+//     if (!data.results || data.results.length === 0) {
+//       return res.status(404).json({ error: "Address not found" });
+//     }
 
-    let { lat, lng } = data.results[0].geometry;
-    console.log(data.results[0].geometry);
+//     let { lat, lng } = data.results[0].geometry;
+//     console.log(data.results[0].geometry);
 
-    if (lat.toFixed(2).length <= 5 || lng.toFixed(2).length <= 5) {
-      const nearbyCoordinates = generateNearbyCoordinates(lat, lng);
+//     if (lat.toFixed(2).length <= 5 || lng.toFixed(2).length <= 5) {
+//       const nearbyCoordinates = generateNearbyCoordinates(lat, lng);
      
-      return res.json({
-        message: "Nearby coordinates due to low precision",
-        latitude: lat,
-        longitude: lng,
-        nearbyCoordinates,
-      });
-    }
+//       return res.json({
+//         message: "Nearby coordinates due to low precision",
+//         latitude: lat,
+//         longitude: lng,
+//         nearbyCoordinates,
+//       });
+//     }
 
-    return res.json({
-      latitude: lat,
-      longitude: lng,
-    });
-  } catch (error) {
-    console.error("Error fetching latitude and longitude:", error.message);
-    return res.status(500).json({ error: "An error occurred while fetching lat long" });
-  }
-};
+//     return res.json({
+//       latitude: lat,
+//       longitude: lng,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching latitude and longitude:", error.message);
+//     return res.status(500).json({ error: "An error occurred while fetching lat long" });
+//   }
+// };
 
 
-exports.getlatlongPostmanGoogle = async (address) => {
-  //  const { address } = req.query;
+//use postman wala
+exports.getlatlongPostmanGoogle = async (req,res) => {
+    const { address } = req.query;
 
   if (!address) {
     return res.status(400).json({ error: "Address is required" });
@@ -183,7 +184,6 @@ exports.getlatlongPostmanGoogle = async (address) => {
 
     const response = await axios.get(url);
     const data = response.data;
-   console.log(response)
     if (!data.results || data.results.length === 0) {
       return res.status(404).json({ error: "Address not found" });
     }
@@ -200,6 +200,7 @@ exports.getlatlongPostmanGoogle = async (address) => {
     return res.status(500).json({ error: "An error occurred while fetching lat long" });
   }
 };
+// use wala  address
 exports.getlatlong = async (address) => {
 
   if (!address) {
@@ -220,7 +221,6 @@ exports.getlatlong = async (address) => {
     }
 
     let { lat, lng } = data.results[0].geometry.location;
-    console.log(lat, lng);
 
     return {
       error: null,
@@ -246,18 +246,19 @@ function generateNearbyCoordinates(lat, lng, count = 5, distance = 0.01) {
 }
 
 const googleMapsApiKey = process.env.googleMapsApiKey;
+
+// wala use wala userid 
 exports.getSearchData = async (userId) => {
   try {
-  
-    const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
-    const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
-    const searchDetails = existingUser[0];
-
-      const { latitude, longitude, radius = 1000 } = searchDetails; 
+     const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
+     const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
+     const searchDetails = existingUser[0];
     
-      if (!latitude || !longitude) {
-        return [null,"Latitude and Longitude are required."];
-      }
+     const { latitude, longitude, radius = 1000 } = searchDetails; 
+  
+        if (!latitude || !longitude) {
+         return [null,"Latitude and Longitude are required."];
+       }
 
       const searchParams = new URLSearchParams({
         location: `${latitude},${longitude}`, // Latitude and Longitude
@@ -272,9 +273,8 @@ exports.getSearchData = async (userId) => {
 
       const results = await axios.get(url);
       const data = results.data;
-      //  console.log(googleMapsApiKey);
-
-      const places = data.results.map((place) => {
+      const limitedResults = data.results.slice(0, 10);
+      const places = limitedResults.map((place) => {
         const address = place.vicinity || "N/A";
         const category = place.types?.[0] || "N/A";
       
@@ -308,10 +308,9 @@ exports.getSearchData = async (userId) => {
     } catch (error) {
       // console.error("Error fetching nearby:", error.message);
       return [  null,"Failed to fetch nearby data. Please try again later." ];
-    }
-    
-  
+    }  
 };
+//address use postman  wala 
 exports.getSearchDataPostman = async (req, res) => {
   try {
     const { userId, } = req.query; // Get radius from query, default is 1000 meters
@@ -387,3 +386,70 @@ exports.getSearchDataPostman = async (req, res) => {
   
 };
 
+// wala use wala userid top 5
+exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
+  try {
+    const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
+    const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
+    const searchDetails = existingUser[0];
+
+    const { latitude, longitude, radius = 5000 } = searchDetails;
+
+    if (!latitude || !longitude) {
+      return [null, "Latitude and Longitude are required."];
+    }
+
+
+    // Determine keyword: prioritize searchQuery if available
+    const keyword = searchQuery || searchDetails.search_type;
+
+    // Avoid restricting type for more accurate results
+    const searchParams = new URLSearchParams({
+      location: `${latitude},${longitude}`,
+      radius: radius.toString(),
+      keyword, // Use keyword directly
+      key: googleMapsApiKey,
+    });
+
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${searchParams.toString()}`;
+
+    const results = await axios.get(url);
+    const data = results.data;
+
+    const places = data.results
+      .filter((place) => place.rating >= 4.0) // High-rated places
+      .slice(0, 5) // Limit to Top 5
+      .map((place) => {
+        const address = place.vicinity || "N/A";
+        const category = place.types?.[0] || "N/A";
+        const distance = geolib.getDistance(
+          { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
+          { latitude: parseFloat(place.geometry.location.lat), longitude: parseFloat(place.geometry.location.lng) }
+        );
+
+        const photoUrl = place.photos?.[0]?.photo_reference
+          ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${place.photos[0].photo_reference}&key=${googleMapsApiKey}`
+          : userIconUrl;
+
+        const openingHours = place.opening_hours
+          ? place.opening_hours.open_now ? "Open Now" : "Closed"
+          : "Not Mentioned";
+        const rating = place.rating || "N/A";
+
+        return {
+          name: place.name,
+          address,
+          category,
+          openingHours,
+          imageUrl: photoUrl,
+          distance: `${(distance / 1000).toFixed(2)} km`,
+          rating,
+        };
+      });
+
+    return [places, null];
+  } catch (error) {
+    console.error("Error fetching nearby:", error.message);
+    return [null, "Failed to fetch nearby data. Please try again later."];
+  }
+};

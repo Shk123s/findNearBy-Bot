@@ -1,5 +1,5 @@
 const {Router } = require("express");
-const {  getlatlongPostman, getSearchDataPostman, getlatlongPostmanGoogle } = require("../functions/functions");
+const {  getSearchDataPostman, getlatlongPostmanGoogle } = require("../functions/functions");
 const mainRoutes = Router();
 
 
