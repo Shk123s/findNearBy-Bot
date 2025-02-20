@@ -387,27 +387,26 @@ exports.getSearchDataPostman = async (req, res) => {
 };
 
 // wala use wala userid top 5
+const shuffleArray = (array) => array.sort(() => Math.random() - 0.5);
+
 exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
   try {
     const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
     const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
     const searchDetails = existingUser[0];
 
-    const { latitude, longitude, radius = 5000 } = searchDetails;
-
+    const { latitude, longitude, radius = 5000, last_top5 = "[]" } = searchDetails;
+    
     if (!latitude || !longitude) {
       return [null, "Latitude and Longitude are required."];
     }
-
-
-    // Determine keyword: prioritize searchQuery if available
+    
     const keyword = searchQuery || searchDetails.search_type;
 
-    // Avoid restricting type for more accurate results
     const searchParams = new URLSearchParams({
       location: `${latitude},${longitude}`,
       radius: radius.toString(),
-      keyword, // Use keyword directly
+      keyword, 
       key: googleMapsApiKey,
     });
 
@@ -416,9 +415,13 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
     const results = await axios.get(url);
     const data = results.data;
 
-    const places = data.results
-      .filter((place) => place.rating >= 4.0) // High-rated places
-      .slice(0, 5) // Limit to Top 5
+     if (!data || !data.results) {
+     console.error("Error: No results found in API response", data);
+     return [null, "No results found."];
+    }
+
+    let places = data.results
+      .filter((place) => place.rating >= 4.0)
       .map((place) => {
         const address = place.vicinity || "N/A";
         const category = place.types?.[0] || "N/A";
@@ -447,9 +450,22 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
         };
       });
 
-    return [places, null];
+    // Convert last top 5 results to an array
+    const lastTop5 = JSON.parse(last_top5);
+    // Remove previously displayed places
+    places = places.filter((place) => !lastTop5?.some((prev) => prev.name === place.name));
+
+    // Shuffle and pick the top 5
+    const top5 = shuffleArray(places).slice(0, 5);
+
+    // Store the new top 5 in the database
+    const updateQuery = "UPDATE user_search SET last_top5 = ? WHERE user_id = ?";
+    await connection.promise().execute(updateQuery, [JSON.stringify(top5), userId]);
+
+    return [top5, null];
   } catch (error) {
     console.error("Error fetching nearby:", error.message);
     return [null, "Failed to fetch nearby data. Please try again later."];
   }
 };
+
