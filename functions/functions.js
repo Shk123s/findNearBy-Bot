@@ -250,34 +250,34 @@ const googleMapsApiKey = process.env.googleMapsApiKey;
 // wala use wala userid 
 exports.getSearchData = async (userId) => {
   try {
-     const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
-     const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
-     const searchDetails = existingUser[0];
-    
-     const { latitude, longitude, radius = 1000 } = searchDetails; 
-  
-        if (!latitude || !longitude) {
-         return [null,"Latitude and Longitude are required."];
-       }
+    const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
+    const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
 
-      const searchParams = new URLSearchParams({
-        location: `${latitude},${longitude}`, // Latitude and Longitude
-        radius:radius.toString(), // Radius in meters (default 1000)
-        type: searchDetails.search_type, // Type of place to search
-        keyword: searchDetails.search_type, // Search keyword
-        key: googleMapsApiKey, // Your API key
-      });
-    
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${searchParams.toString()}`;
-      // const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=gym&key=${googleMapsApiKey}`;
+    const searchDetails = existingUser[0];
+    const { latitude, longitude, radius = 1000, search_type } = searchDetails;
 
-      const results = await axios.get(url);
-      const data = results.data;
-      const limitedResults = data.results.slice(0, 10);
-      const places = limitedResults.map((place) => {
+    if (!latitude || !longitude) {
+      return [null, "Latitude and Longitude are required."];
+    }
+
+    const searchParams = new URLSearchParams({
+      location: `${latitude},${longitude}`,
+      radius: radius.toString(),
+      type: search_type,
+      keyword: search_type,
+      key: googleMapsApiKey,
+    });
+
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${searchParams.toString()}`;
+    const results = await axios.get(url);
+    const data = results.data;
+    const limitedResults = data.results.slice(0, 10);
+
+    const places = await Promise.all(
+      limitedResults.map(async (place) => {
         const address = place.vicinity || "N/A";
         const category = place.types?.[0] || "N/A";
-      
+
         const distance = geolib.getDistance(
           { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
           {
@@ -285,30 +285,70 @@ exports.getSearchData = async (userId) => {
             longitude: parseFloat(place.geometry.location.lng),
           }
         );
-    
+
         const photoUrl = place.photos?.[0]?.photo_reference
           ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${place.photos[0].photo_reference}&key=${googleMapsApiKey}`
-          : userIconUrl; 
-      
-          const openingHours = place.opening_hours ? place.opening_hours.open_now  ? "Open Now" : "Closed" : "Not Mentioned";
+          : userIconUrl;
+
+        const openingHours = place.opening_hours
+          ? place.opening_hours.open_now
+            ? "Open Now"
+            : "Closed"
+          : "Not Mentioned";
+
         const rating = place.rating || "N/A";
-      
+
+        // ✅ Fetch additional details using Place Details API
+        const placeDetailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,price_level,reviews&key=${googleMapsApiKey}`;
+        const placeDetails = await axios.get(placeDetailsUrl);
+        const details = placeDetails.data.result;
+
+        const website = details?.website || "Not Available";
+        const phoneNumber = details?.formatted_phone_number || "Not Available";
+
+        const priceRange =
+          details.price_level !== undefined
+            ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
+            : "Not Available";
+
+        const reviews = details?.reviews
+          ? details.reviews.map((review) => ({
+              author: review.author_name,
+              rating: review.rating,
+              text: review.text,
+            }))
+          : [];
+
+        // ✅ Add Amenities
+        const amenities = {
+          hasParking: place.types?.some((type) => ["parking", "car_parking", "parking_lot"].includes(type)) || false,
+          hasWiFi: place.types?.some((type) => ["cafe", "internet_cafe", "library"].includes(type)) || false,
+          isAccessible: place.types?.includes("wheelchair_accessible") || false,
+          hasRestaurant: place.types?.includes("restaurant") || false,
+        };
+
         return {
+          place_id: place.place_id,
           name: place.name,
           address,
           category,
           openingHours,
           imageUrl: photoUrl,
           distance: `${(distance / 1000).toFixed(2)} km`,
-          rating, 
+          rating,
+          phoneNumber,
+          website,
+          priceRange,
+          reviews,
+          amenities,
         };
-      });
-    
-      return [places ,null];
-    } catch (error) {
-      // console.error("Error fetching nearby:", error.message);
-      return [  null,"Failed to fetch nearby data. Please try again later." ];
-    }  
+      })
+    );
+
+    return [places, null];
+  } catch (error) {
+    return [null, "Failed to fetch nearby data. Please try again later."];
+  }
 };
 //address use postman  wala 
 exports.getSearchDataPostman = async (req, res) => {
@@ -393,41 +433,45 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
   try {
     const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
     const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
-    const searchDetails = existingUser[0];
 
-    const { latitude, longitude, radius = 5000, last_top5 = "[]" } = searchDetails;
-    
+    if (!existingUser.length) {
+      return [null, "User data not found."];
+    }
+
+    const searchDetails = existingUser[0];
+    const { latitude, longitude, radius = 5000, last_top5 = "[]", search_type } = searchDetails;
+
     if (!latitude || !longitude) {
       return [null, "Latitude and Longitude are required."];
     }
-    
-    const keyword = searchQuery || searchDetails.search_type;
 
+    const keyword = searchQuery || search_type;
     const searchParams = new URLSearchParams({
       location: `${latitude},${longitude}`,
       radius: radius.toString(),
-      keyword, 
+      keyword,
       key: googleMapsApiKey,
     });
 
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${searchParams.toString()}`;
-
     const results = await axios.get(url);
     const data = results.data;
+    const filteredResults = data.results.filter((place) => place.rating >= 4.0);
 
-     if (!data || !data.results) {
-     console.error("Error: No results found in API response", data);
-     return [null, "No results found."];
+    if (!filteredResults.length) {
+      return [null, "No results found."];
     }
 
-    let places = data.results
-      .filter((place) => place.rating >= 4.0)
-      .map((place) => {
+    const places = await Promise.all(
+      filteredResults.map(async (place) => {
         const address = place.vicinity || "N/A";
         const category = place.types?.[0] || "N/A";
         const distance = geolib.getDistance(
           { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
-          { latitude: parseFloat(place.geometry.location.lat), longitude: parseFloat(place.geometry.location.lng) }
+          {
+            latitude: parseFloat(place.geometry.location.lat),
+            longitude: parseFloat(place.geometry.location.lng),
+          }
         );
 
         const photoUrl = place.photos?.[0]?.photo_reference
@@ -435,11 +479,20 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
           : userIconUrl;
 
         const openingHours = place.opening_hours
-          ? place.opening_hours.open_now ? "Open Now" : "Closed"
+          ? place.opening_hours.open_now
+            ? "Open Now"
+            : "Closed"
           : "Not Mentioned";
+
         const rating = place.rating || "N/A";
 
+        // Fetch additional details
+        const placeDetailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,price_level,reviews&key=${googleMapsApiKey}`;
+        const placeDetails = await axios.get(placeDetailsUrl).catch(() => null);
+        const details = placeDetails?.data?.result || {};
+
         return {
+          place_id: place.place_id,
           name: place.name,
           address,
           category,
@@ -447,18 +500,27 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
           imageUrl: photoUrl,
           distance: `${(distance / 1000).toFixed(2)} km`,
           rating,
+          phoneNumber: details.formatted_phone_number || "Not Available",
+          website: details.website || "Not Available",
+          priceRange:
+            details.price_level !== undefined
+              ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
+              : "Not Available",
+          reviews: details.reviews
+            ? details.reviews.map((review) => ({
+                author: review.author_name,
+                rating: review.rating,
+                text: review.text.slice(0, 100) + "..",
+              }))
+            : [],
         };
-      });
+      })
+    );
 
-    // Convert last top 5 results to an array
     const lastTop5 = JSON.parse(last_top5);
-    // Remove previously displayed places
-    places = places.filter((place) => !lastTop5?.some((prev) => prev.name === place.name));
+    const uniquePlaces = places.filter((place) => !lastTop5.some((prev) => prev.name === place.name));
+    const top5 = shuffleArray(uniquePlaces).slice(0, 5);
 
-    // Shuffle and pick the top 5
-    const top5 = shuffleArray(places).slice(0, 5);
-
-    // Store the new top 5 in the database
     const updateQuery = "UPDATE user_search SET last_top5 = ? WHERE user_id = ?";
     await connection.promise().execute(updateQuery, [JSON.stringify(top5), userId]);
 
@@ -468,4 +530,3 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
     return [null, "Failed to fetch nearby data. Please try again later."];
   }
 };
-

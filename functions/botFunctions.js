@@ -69,23 +69,23 @@ const botCaller = async () => {
             await connection.promise().execute(updateQuery, [latitude, longitude, userId]);
     
             const inlineKeyboardForOptions = new InlineKeyboard()
-              .text("Top 5", "top5")
-              .row()
-              .text("Restaurant", "restaurant")
-              .text("Hotel", "hotel")
-              .text("Cafe", "cafe")
-              .row()
-              .text("Gym", "gym")
-              .text("Hospital", "hospital")
-              .text("Pharmacy", "pharmacy")
-              .row()
-              .text("Park", "park")
-              .text("ATM", "atm")
-              .text("Mall", "mall")
-              .row()
-              .text("Gas Station", "gas_station")
-              .text("Movie Theater", "movie_theater")
-              .text("Supermarket", "supermarket");
+            .text("🔝 Top 5", "top5")
+            .row()
+            .text("🏨 Hotel", "hotel")
+            .text("🍽️ Restaurant", "restaurant")
+            .text("☕ Cafe", "cafe")
+            .row()
+            .text("🏋️ Gym", "gym")
+            .text("🏥 Hospital", "hospital")
+            .text("💊 Pharmacy", "pharmacy")
+            .row()
+            .text("🏞️ Park", "park")
+            .text("🏧 ATM", "atm")
+            .text("🛍️ Mall", "mall")
+            .row()
+            .text("⛽ Gas Station", "gas_station")
+            .text("🎥 Movie Theater", "movie_theater")
+            .text("🛒 Supermarket", "supermarket");
     
             await ctx.reply("Received! Great😊. Please choose an option:", {
               reply_markup: inlineKeyboardForOptions,
@@ -112,13 +112,30 @@ const botCaller = async () => {
           await ctx.reply("An error occurred while fetching the search results. Please try again later.");
         } else if (userResults && userResults.length > 0) {
           for (const place of userResults) {
-            const caption = `
-    <b>🟡 ${place.name}</b>
-    📍 <u>Address:</u> ${place.address}
-    🚩 <u>Category:</u> ${place.category}
-    ⭐ <u>Rating:</u> ${place.rating}
-    🔓 <u>Open:</u> ${place.openingHours}
-    📏 <u>Distance:</u> ${place.distance}`;
+            let caption = `
+            <b>🟡 ${place.name}</b>
+            📍 <u>Address:</u> ${place.address}
+            🚩 <u>Category:</u> ${place.category}
+            ⭐ <u>Rating:</u> ${place.rating}
+            🔓 <u>Open:</u> ${place.openingHours}
+            📏 <u>Distance:</u> ${place.distance}
+            📞 <u>Phone:</u> ${place.phoneNumber}
+            🌐 <u>Website:</u> <a href="${place.website}">${place.website}</a>
+            💰 <u>Price Range:</u> ${place.priceRange}
+            🏆 <u>Top Reviews:</u> ${place.reviews
+              .slice(0, 2)
+              .map((r) => `\n- ${r.author}: ${r.rating}⭐ - ${r.text}`)
+              .join("")}
+            🛠 <u>Amenities:</u> 
+               - 🅿️ Parking: ${place?.amenities?.hasParking ? "Yes" : "No"}
+               - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}
+               - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}
+               - 🍽️ Restaurant: ${place?.amenities?.hasRestaurant ? "Yes" : "No"}
+            `;
+            
+            // Slice if exceeds Telegram's limit
+            caption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+            
     
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;
             const mapKeyboard = new InlineKeyboard().url("Get Directions", mapsUrl);
@@ -130,23 +147,23 @@ const botCaller = async () => {
             });
           }
           const inlineKeyboardForOptions = new InlineKeyboard()
-          .text("Top 5", "top5")
+          .text("🔝 Top 5", "top5")
           .row()
-          .text("Restaurant", "restaurant")
-          .text("Hotel", "hotel")
-          .text("Cafe", "cafe")
+          .text("🏨 Hotel", "hotel")
+          .text("🍽️ Restaurant", "restaurant")
+          .text("☕ Cafe", "cafe")
           .row()
-          .text("Gym", "gym")
-          .text("Hospital", "hospital")
-          .text("Pharmacy", "pharmacy")
+          .text("🏋️ Gym", "gym")
+          .text("🏥 Hospital", "hospital")
+          .text("💊 Pharmacy", "pharmacy")
           .row()
-          .text("Park", "park")
-          .text("ATM", "atm")
-          .text("Mall", "mall")
+          .text("🏞️ Park", "park")
+          .text("🏧 ATM", "atm")
+          .text("🛍️ Mall", "mall")
           .row()
-          .text("Gas Station", "gas_station")
-          .text("Movie Theater", "movie_theater")
-          .text("Supermarket", "supermarket");
+          .text("⛽ Gas Station", "gas_station")
+          .text("🎥 Movie Theater", "movie_theater")
+          .text("🛒 Supermarket", "supermarket");
 
         await ctx.reply("Thank you😊. Please choose an option:", {
           reply_markup: inlineKeyboardForOptions,
@@ -164,75 +181,83 @@ const botCaller = async () => {
         try {
           const userId = ctx.update.callback_query.from.id;
           const selection = ctx.callbackQuery.data;
-
+    
           const updateQuery = `UPDATE user_search SET search_type = ? WHERE user_id = ?`;
           await connection.promise().execute(updateQuery, [selection, userId]);
-
+    
           const [userResults, userResultsError] = await getSearchData(userId);
-
+    
           if (userResultsError) {
-            await ctx.reply(
-              "An error occurred while fetching the search results. Please try again later."
-            );
+            await ctx.reply("An error occurred while fetching the search results. Please try again later.");
           } else if (userResults && userResults.length > 0) {
+          const maxCaptionLength = 1024; // Telegram's max caption limit
             for (const place of userResults) {
-              const caption = `
-<b>🟡 ${place.name}</b>
-📍 <u>Address:</u> ${place.address}
-🚩 <u>Category:</u> ${place.category}
-⭐ <u>Rating:</u> ${place.rating}
-🔓 <u>Open:</u> ${place.openingHours}
-📏 <u>Distance:</u> ${place.distance}`;
-
-              const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                place.address
-              )}`;
-              const mapKeyboard = new InlineKeyboard().url(
-                "Get Directions",
-                mapsUrl
-              );
-
+              let caption = `
+              <b>🟡 ${place.name}</b>
+              📍 <u>Address:</u> ${place.address}
+              🚩 <u>Category:</u> ${place.category}
+              ⭐ <u>Rating:</u> ${place.rating}
+              🔓 <u>Open:</u> ${place.openingHours}
+              📏 <u>Distance:</u> ${place.distance}
+              📞 <u>Phone:</u> ${place.phoneNumber}
+              🌐 <u>Website:</u> <a href="${place.website}">${place.website}</a>
+              💰 <u>Price Range:</u> ${place.priceRange}
+              🏆 <u>Top Reviews:</u> ${place.reviews
+                .slice(0, 2)
+                .map((r) => `\n- ${r.author}: ${r.rating}⭐ - ${r.text}`)
+                .join("")}
+              🛠 <u>Amenities:</u> 
+                 - 🅿️ Parking: ${place.amenities.hasParking ? "Yes" : "No"}
+                 - 📶 WiFi: ${place.amenities.hasWiFi ? "Yes" : "No"}
+                 - ♿ Accessibility: ${place.amenities.isAccessible ? "Yes" : "No"}
+                 - 🍽️ Restaurant: ${place.amenities.hasRestaurant ? "Yes" : "No"}
+              `;
+              
+              // Slice if exceeds Telegram's limit
+              caption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+              
+    
+              const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;
+              const mapKeyboard = new InlineKeyboard().url("Get Directions", mapsUrl);
+    
               await ctx.replyWithPhoto(place.imageUrl, {
                 caption: caption,
                 parse_mode: "HTML",
                 reply_markup: mapKeyboard,
               });
             }
+    
+            // ✅ New Interactive Options
             const inlineKeyboardForOptions = new InlineKeyboard()
-            .text("Top 5", "top5")
-            .row()
-            .text("Restaurant", "restaurant")
-            .text("Hotel", "hotel")
-            .text("Cafe", "cafe")
-            .row()
-            .text("Gym", "gym")
-            .text("Hospital", "hospital")
-            .text("Pharmacy", "pharmacy")
-            .row()
-            .text("Park", "park")
-            .text("ATM", "atm")
-            .text("Mall", "mall")
-            .row()
-            .text("Gas Station", "gas_station")
-            .text("Movie Theater", "movie_theater")
-            .text("Supermarket", "supermarket");
-
-            await ctx.reply("Thank you😊. Please choose an option:", {
-              reply_markup: inlineKeyboardForOptions,
-            });
+              .text("🔝 Top 5", "top5")
+              .row()
+              .text("🏨 Hotel", "hotel")
+              .text("🍽️ Restaurant", "restaurant")
+              .text("☕ Cafe", "cafe")
+              .row()
+              .text("🏋️ Gym", "gym")
+              .text("🏥 Hospital", "hospital")
+              .text("💊 Pharmacy", "pharmacy")
+              .row()
+              .text("🏞️ Park", "park")
+              .text("🏧 ATM", "atm")
+              .text("🛍️ Mall", "mall")
+              .row()
+              .text("⛽ Gas Station", "gas_station")
+              .text("🎥 Movie Theater", "movie_theater")
+              .text("🛒 Supermarket", "supermarket");
+    
+            await ctx.reply("Thank you 😊. Please choose an option:", { reply_markup: inlineKeyboardForOptions });
           } else {
-            await ctx.reply(
-              "No results found.Try entering a nearby area or use a more specific location (e.g., landmark or area district,city,country. like : Byculla station west mumbai india. )."
-            );
+            await ctx.reply("No results found. Try a more specific location.");
           }
         } catch (error) {
           console.error("Error processing callback query:", error);
-          await ctx.reply(
-            "There was an error processing your request. Please try again later."
-          );
+          await ctx.reply("There was an error processing your request. Please try again later.");
         }
       }
     );
+    
 
     // ✅ Top 5 selection triggers this
     bot.callbackQuery("top5", async (ctx) => {
