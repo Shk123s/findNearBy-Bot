@@ -310,7 +310,9 @@ exports.getSearchData = async (userId) => {
           details.price_level !== undefined
             ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
             : "Not Available";
-
+            const truncate = (text, length = 100) => 
+            text && text.length > length ? text.slice(0, length) + "..." : text;
+          
           const reviews = details?.reviews
   ? details.reviews.map((review) => ({
       author: review.author_name,
@@ -348,6 +350,7 @@ exports.getSearchData = async (userId) => {
 
     return [places, null];
   } catch (error) {
+    console.log(error)
     return [null, "Failed to fetch nearby data. Please try again later."];
   }
 };

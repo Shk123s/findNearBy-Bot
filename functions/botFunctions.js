@@ -111,8 +111,11 @@ const botCaller = async () => {
         if (userResultsError) {
           await ctx.reply("An error occurred while fetching the search results. Please try again later.");
         } else if (userResults && userResults.length > 0) {
+          const truncate = (text, length = 200) => 
+          text && text.length > length ? text.slice(0, length) + "..." : text;
+
           for (const place of userResults) {
-            const caption = `
+            let caption = `
             <b>🟡 ${place.name}</b>\n
             📍 <u>Address:</u> ${place.address}\n
             🚩 <u>Category:</u> ${place.category}\n
@@ -123,11 +126,11 @@ const botCaller = async () => {
             🌐 <u>Website:</u> <a href="${place.website}">${place.website}</a>\n
             💰 <u>Price Range:</u> ${place.priceRange}\n
             🏆 <u>Top Reviews:</u>\n
-            ${reviews.map(r => `- ${r.author}: ${r.rating}⭐ - ${truncate(r.text, 200)}`).join("\n")}\n
+            ${place.reviews.map(r => `- ${r.author}: ${r.rating}⭐ - ${truncate(r.text, 200)}`).join("\n")}\n
             🛠 <u>Amenities:</u>\n
-               - 🅿️ Parking: ${place.amenities.hasParking ? "Yes" : "No"}\n
-               - 📶 WiFi: ${place.amenities.hasWiFi ? "Yes" : "No"}\n
-               - ♿ Accessibility: ${place.amenities.isAccessible ? "Yes" : "No"}\n
+               - 🅿️ Parking: ${place?.amenities?.hasParking ? "Yes" : "No"}\n
+               - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}\n
+               - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}\n
             `.trim();
             
             if (caption.length > 1024) {
@@ -186,7 +189,7 @@ const botCaller = async () => {
           await connection.promise().execute(updateQuery, [selection, userId]);
     
           const [userResults, userResultsError] = await getSearchData(userId);
-    
+      
           if (userResultsError) {
             await ctx.reply("An error occurred while fetching the search results. Please try again later.");
           } else if (userResults && userResults.length > 0) {
