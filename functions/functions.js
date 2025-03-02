@@ -311,13 +311,14 @@ exports.getSearchData = async (userId) => {
             ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
             : "Not Available";
 
-        const reviews = details?.reviews
-          ? details.reviews.map((review) => ({
-              author: review.author_name,
-              rating: review.rating,
-              text: review.text,
-            }))
-          : [];
+          const reviews = details?.reviews
+  ? details.reviews.map((review) => ({
+      author: review.author_name,
+      rating: review.rating,
+      text: truncate(review.text, 200)  // Trim long reviews
+    }))
+  : [];
+
 
         // ✅ Add Amenities
         const amenities = {

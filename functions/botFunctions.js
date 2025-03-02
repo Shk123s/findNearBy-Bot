@@ -112,29 +112,29 @@ const botCaller = async () => {
           await ctx.reply("An error occurred while fetching the search results. Please try again later.");
         } else if (userResults && userResults.length > 0) {
           for (const place of userResults) {
-            let caption = `
-            <b>🟡 ${place.name}</b>
-            📍 <u>Address:</u> ${place.address}
-            🚩 <u>Category:</u> ${place.category}
-            ⭐ <u>Rating:</u> ${place.rating}
-            🔓 <u>Open:</u> ${place.openingHours}
-            📏 <u>Distance:</u> ${place.distance}
-            📞 <u>Phone:</u> ${place.phoneNumber}
-            🌐 <u>Website:</u> <a href="${place.website}">${place.website}</a>
-            💰 <u>Price Range:</u> ${place.priceRange}
-            🏆 <u>Top Reviews:</u> ${place.reviews
-              .slice(0, 2)
-              .map((r) => `\n- ${r.author}: ${r.rating}⭐ - ${r.text}`)
-              .join("")}
-            🛠 <u>Amenities:</u> 
-               - 🅿️ Parking: ${place?.amenities?.hasParking ? "Yes" : "No"}
-               - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}
-               - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}
-               - 🍽️ Restaurant: ${place?.amenities?.hasRestaurant ? "Yes" : "No"}
-            `;
+            const caption = `
+            <b>🟡 ${place.name}</b>\n
+            📍 <u>Address:</u> ${place.address}\n
+            🚩 <u>Category:</u> ${place.category}\n
+            ⭐ <u>Rating:</u> ${place.rating}\n
+            🔓 <u>Open:</u> ${place.openingHours}\n
+            📏 <u>Distance:</u> ${place.distance}\n
+            📞 <u>Phone:</u> ${place.phoneNumber}\n
+            🌐 <u>Website:</u> <a href="${place.website}">${place.website}</a>\n
+            💰 <u>Price Range:</u> ${place.priceRange}\n
+            🏆 <u>Top Reviews:</u>\n
+            ${reviews.map(r => `- ${r.author}: ${r.rating}⭐ - ${truncate(r.text, 200)}`).join("\n")}\n
+            🛠 <u>Amenities:</u>\n
+               - 🅿️ Parking: ${place.amenities.hasParking ? "Yes" : "No"}\n
+               - 📶 WiFi: ${place.amenities.hasWiFi ? "Yes" : "No"}\n
+               - ♿ Accessibility: ${place.amenities.isAccessible ? "Yes" : "No"}\n
+            `.trim();
             
-            // Slice if exceeds Telegram's limit
-            caption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+            if (caption.length > 1024) {
+              console.warn("Caption too long! Truncating...");
+              caption = caption.slice(0, 1020) + "...";
+            }
+          
             
     
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;
