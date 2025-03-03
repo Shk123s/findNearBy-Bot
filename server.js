@@ -35,6 +35,6 @@ botCaller();
 // Database connection.
 dbconnection.connect();
 
-app.listen(3000, () => {
-  console.log("Server started on port 3000 && Bot is live");
+app.listen(4000, () => {
+  console.log("Server started on port 4000 && Bot is live");
 });

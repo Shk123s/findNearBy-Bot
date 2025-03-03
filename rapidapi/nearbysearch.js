@@ -1,6 +1,7 @@
 const axios = require("axios");
 const geolib = require("geolib");
 
+const userIconUrl = "https://img.freepik.com/premium-vector/colorful-collection-icons-including-house-with-red-orange-background_1187092-69811.jpg?w=740";
 
 const shuffleArray = (array) => array.sort(() => Math.random() - 0.5);
 
@@ -12,6 +13,7 @@ exports.searchedTopFivePlace = async (req,res) => {
       if (!latitude || !longitude) {
         return [null, "Latitude and Longitude are required."];
       }
+
       const searchParams = new URLSearchParams({
         location: `${latitude},${longitude}`,
         radius: radius.toString(),
@@ -23,20 +25,28 @@ exports.searchedTopFivePlace = async (req,res) => {
   
       const results = await axios.get(url);
       const data = results.data;
-  
+
        if (!data || !data.results) {
        console.error("Error: No results found in API response", data);
-       return [null, "No results found."];
+       return res.status(404).json({data:"No results found."});
       }
   
-      let places = data.results
-        .filter((place) => place.rating >= 4.0)
-        .map((place) => {
+      const filteredResults = data.results.filter((place) => place.rating >= 4.0);
+
+      if (!filteredResults.length) {
+        return res.status(404).json({data:"No results found."});
+      }
+  
+      const places = await Promise.all(
+        filteredResults.map(async (place) => {
           const address = place.vicinity || "N/A";
           const category = place.types?.[0] || "N/A";
           const distance = geolib.getDistance(
             { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
-            { latitude: parseFloat(place.geometry.location.lat), longitude: parseFloat(place.geometry.location.lng) }
+            {
+              latitude: parseFloat(place.geometry.location.lat),
+              longitude: parseFloat(place.geometry.location.lng),
+            }
           );
   
           const photoUrl = place.photos?.[0]?.photo_reference
@@ -44,12 +54,20 @@ exports.searchedTopFivePlace = async (req,res) => {
             : userIconUrl;
   
           const openingHours = place.opening_hours
-            ? place.opening_hours.open_now ? "Open Now" : "Closed"
+            ? place.opening_hours.open_now
+              ? "Open Now"
+              : "Closed"
             : "Not Mentioned";
+  
           const rating = place.rating || "N/A";
   
+          // Fetch additional details
+          const placeDetailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,price_level,reviews&key=${googleMapsApiKey}`;
+          const placeDetails = await axios.get(placeDetailsUrl).catch(() => null);
+          const details = placeDetails?.data?.result || {};
+  
           return {
-            place_id:place.place_id,
+            place_id: place.place_id,
             name: place.name,
             address,
             category,
@@ -57,15 +75,28 @@ exports.searchedTopFivePlace = async (req,res) => {
             imageUrl: photoUrl,
             distance: `${(distance / 1000).toFixed(2)} km`,
             rating,
+            phoneNumber: details.formatted_phone_number || "Not Available",
+            website: details.website || "Not Available",
+            priceRange:
+              details.price_level !== undefined
+                ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
+                : "Not Available",
+            reviews: details.reviews
+              ? details.reviews.map((review) => ({
+                  author: review.author_name,
+                  rating: review.rating,
+                  text: review.text.slice(0, 100) + "..",
+                }))
+              : [],
           };
-        });
-  
-      // Shuffle and pick the top 5
+        })
+      );
+
       const top5 = shuffleArray(places).slice(0, 5);
   
-
       return res.status(200).json({top5 });
     } catch (error) {
+      console.log(error,"error")
       console.error("Error fetching nearby:", error.message);
       return res.status(500).json({ error: "Error fetching nearby:" });
     }
