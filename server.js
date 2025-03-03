@@ -3,6 +3,7 @@ require("dotenv").config();
 const app = express();
 const dbconnection = require("./database");
 const mainRoutes = require("./routes/routes");
+const rapidApiRoutes = require("./routes/rapidApiRoutes");
 const botCaller = require("./functions/botFunctions");
 //health check
 app.get('/healthCheck', async (req, res, next) => {
@@ -26,6 +27,7 @@ app.get("/ping", (req, res) => {
 });
 
 app.use("/bot/api/v1",mainRoutes);
+app.use("/api/v1",rapidApiRoutes);
 
 //start the bot.
 botCaller();

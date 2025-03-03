@@ -2,6 +2,7 @@ const axios = require("axios");
 const geolib = require("geolib");
 
 
+const shuffleArray = (array) => array.sort(() => Math.random() - 0.5);
 
 exports.searchedTopFivePlace = async (req,res) => {
     try {
@@ -48,6 +49,7 @@ exports.searchedTopFivePlace = async (req,res) => {
           const rating = place.rating || "N/A";
   
           return {
+            place_id:place.place_id,
             name: place.name,
             address,
             category,
