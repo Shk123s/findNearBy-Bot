@@ -132,7 +132,7 @@ const botCaller = async () => {
                - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}\n
                - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}\n
             `.trim();
-            
+            caption = Buffer.from(caption, 'utf-8').toString();
             if (caption.length > 1024) {
               console.warn("Caption too long! Truncating...");
               caption = caption.slice(0, 1020) + "...";
@@ -215,9 +215,13 @@ const botCaller = async () => {
                  - ♿ Accessibility: ${place.amenities.isAccessible ? "Yes" : "No"}
                  - 🍽️ Restaurant: ${place.amenities.hasRestaurant ? "Yes" : "No"}
               `;
-              
+              caption = Buffer.from(caption, 'utf-8').toString();
               // Slice if exceeds Telegram's limit
-              caption = caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+              if (caption.length > 1024) {
+                console.warn("Caption too long! Truncating...");
+                caption = caption.slice(0, 1020) + "...";
+              }
+            
               
     
               const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`;

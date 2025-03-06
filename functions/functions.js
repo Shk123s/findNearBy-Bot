@@ -2,7 +2,12 @@ const axios = require("axios");
 const fourSquareToken = process.env.fourSquareToken;
 const geolib = require("geolib");
 const connection = require("../database");
- const userIconUrl = "https://img.freepik.com/premium-vector/colorful-collection-icons-including-house-with-red-orange-background_1187092-69811.jpg?w=740";
+userIconUrl = "https://img.freepik.com/premium-vector/colorful-collection-icons-including-house-with-red-orange-background_1187092-69811.jpg?w=740";
+
+
+function sanitizeText(text) {
+  return text.replace(/[^\x00-\x7F]/g, "");
+}
 
 // exports.getSearchData = async (userId) => {
 //   try {
@@ -313,13 +318,15 @@ exports.getSearchData = async (userId) => {
             const truncate = (text, length = 100) => 
             text && text.length > length ? text.slice(0, length) + "..." : text;
           
-          const reviews = details?.reviews
-  ? details.reviews.map((review) => ({
-      author: review.author_name,
-      rating: review.rating,
-      text: truncate(review.text, 200)  // Trim long reviews
-    }))
-  : [];
+          const reviews = details.reviews?.length
+          ? [
+              {
+                author: details.reviews[0].author_name,
+                rating: details.reviews[0].rating,
+                text: sanitizeText(details.reviews[0].text.slice(0, 150)) + "..", // Limit text to 150 chars
+              },
+            ]
+          : []
 
 
         // ✅ Add Amenities
@@ -433,6 +440,7 @@ exports.getSearchDataPostman = async (req, res) => {
 // wala use wala userid top 5
 const shuffleArray = (array) => array.sort(() => Math.random() - 0.5);
 
+
 exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
   try {
     const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
@@ -510,13 +518,17 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
             details.price_level !== undefined
               ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
               : "Not Available",
-          reviews: details.reviews
-            ? details.reviews.map((review) => ({
-                author: review.author_name,
-                rating: review.rating,
-                text: review.text.slice(0, 100) + "..",
-              }))
-            : [],
+              reviews: details.reviews?.length
+              ? [
+                  {
+                    author: details.reviews[0].author_name,
+                    rating: details.reviews[0].rating,
+                    text: sanitizeText(details.reviews[0].text.slice(0, 150)) + "..", // Limit text to 150 chars
+                  },
+                ]
+              : [],
+            
+            
         };
       })
     );
