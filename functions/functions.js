@@ -259,7 +259,7 @@ exports.getSearchData = async (userId) => {
     const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
 
     const searchDetails = existingUser[0];
-    const { latitude, longitude, radius = 1000, search_type } = searchDetails;
+    const { latitude, longitude, radius = 2000, search_type } = searchDetails;
 
     if (!latitude || !longitude) {
       return [null, "Latitude and Longitude are required."];
@@ -534,7 +534,7 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
     );
 
     const lastTop5 = JSON.parse(last_top5);
-    const uniquePlaces = places.filter((place) => !lastTop5.some((prev) => prev.name === place.name));
+    const uniquePlaces = places.filter((place) => !lastTop5?.some((prev) => prev.name === place.name));
     const top5 = shuffleArray(uniquePlaces).slice(0, 5);
 
     const updateQuery = "UPDATE user_search SET last_top5 = ? WHERE user_id = ?";
@@ -542,7 +542,7 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
 
     return [top5, null];
   } catch (error) {
-    console.error("Error fetching nearby:", error.message);
+    console.error("Error fetching nearby Top 5:", error.message);
     return [null, "Failed to fetch nearby data. Please try again later."];
   }
 };

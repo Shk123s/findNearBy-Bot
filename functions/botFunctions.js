@@ -16,10 +16,10 @@ const botCaller = async () => {
 
     bot.command("start", async (ctx) => {
       const userId = ctx.update.message.from.id || 11111;
-      const username = ctx.update.message.from.username || "default_username";
+      const username = ctx.update.message.from.username || "User";
       const firstName =
-        ctx.update.message.from.first_name || "default_first_name";
-
+        ctx.update.message.from.first_name || "User";
+    
       try {
         const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
         const [existingUser] = await connection
@@ -29,7 +29,7 @@ const botCaller = async () => {
         if (existingUser.length > 0) {
           await ctx.reply(`Welcome back, ${username}!`);
           await ctx.reply(
-            "Please provide your location and be more specific (e.g., landmark or area district,city,country. like : Byculla station west mumbai india. )."
+            "Please provide your location and be more specific, including details such as a landmark, area/district, city, and country (e.g., Byculla Station West, Mumbai, India)."
           );
         } else {
           const insertQuery =
@@ -38,9 +38,9 @@ const botCaller = async () => {
             .promise()
             .execute(insertQuery, [userId, username, firstName]);
 
-          await ctx.reply(`Hello ${firstName}! Welcome to the bot.`);
+          await ctx.reply(`Hello ${firstName}! Welcome to the FindNearby bot.`);
           await ctx.reply(
-            "Please provide your location and be more specific (e.g., landmark or area district,city,country. like : Byculla station west mumbai india. )."
+            "Please provide your location and be more specific, including details such as a landmark, area/district, city, and country (e.g., Byculla Station West, Mumbai, India)."
           );
         }
       } catch (error) {
@@ -69,7 +69,7 @@ const botCaller = async () => {
             await connection.promise().execute(updateQuery, [latitude, longitude, userId]);
     
             const inlineKeyboardForOptions = new InlineKeyboard()
-            .text("🔝 Top 5", "top5")
+            .text("🔝 Top 5 Place", "top5")
             .row()
             .text("🏨 Hotel", "hotel")
             .text("🍽️ Restaurant", "restaurant")
@@ -85,7 +85,19 @@ const botCaller = async () => {
             .row()
             .text("⛽ Gas Station", "gas_station")
             .text("🎥 Movie Theater", "movie_theater")
-            .text("🛒 Supermarket", "supermarket");
+            .text("🛒 Supermarket", "supermarket")
+            .row()
+            .text("🚉 Train Station", "train_station")
+            .text("🏦 Bank", "bank")
+            .text("🏢 Office Spaces", "office_space")
+            .row()
+            .text("🍹 Bar", "bar")
+            .text("🎡 Amusement Park", "amusement_park")
+            .row()
+            .text("🏫 School", "school")
+            .text("🎓 University", "university")
+            .text("🏛 Museum", "museum");
+          
     
             await ctx.reply("Received! Great😊. Please choose an option:", {
               reply_markup: inlineKeyboardForOptions,
@@ -128,10 +140,10 @@ const botCaller = async () => {
             🏆 <u>Top Reviews:</u>\n
             ${place.reviews.map(r => `- ${r.author}: ${r.rating}⭐ - ${truncate(r.text, 200)}`).join("\n")}\n
             🛠 <u>Amenities:</u>\n
-               - 🅿️ Parking: ${place?.amenities?.hasParking ? "Yes" : "No"}\n
-               - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}\n
-               - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}\n
-            `.trim();
+            - 🅿️ Parking: ${place?.amenities?.hasParking ? "Yes" : "No"}\n
+            - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}\n
+            - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}\n
+         `.trim();
             caption = Buffer.from(caption, 'utf-8').toString();
             if (caption.length > 1024) {
               console.warn("Caption too long! Truncating...");
@@ -150,23 +162,35 @@ const botCaller = async () => {
             });
           }
           const inlineKeyboardForOptions = new InlineKeyboard()
-          .text("🔝 Top 5", "top5")
-          .row()
-          .text("🏨 Hotel", "hotel")
-          .text("🍽️ Restaurant", "restaurant")
-          .text("☕ Cafe", "cafe")
-          .row()
-          .text("🏋️ Gym", "gym")
-          .text("🏥 Hospital", "hospital")
-          .text("💊 Pharmacy", "pharmacy")
-          .row()
-          .text("🏞️ Park", "park")
-          .text("🏧 ATM", "atm")
-          .text("🛍️ Mall", "mall")
-          .row()
-          .text("⛽ Gas Station", "gas_station")
-          .text("🎥 Movie Theater", "movie_theater")
-          .text("🛒 Supermarket", "supermarket");
+            .text("🔝 Top 5 Place", "top5")
+            .row()
+           .text("🏨 Hotel", "hotel")
+           .text("🍽️ Restaurant", "restaurant")
+           .text("☕ Cafe", "cafe")
+           .row()
+           .text("🏋️ Gym", "gym")
+           .text("🏥 Hospital", "hospital")
+           .text("💊 Pharmacy", "pharmacy")
+           .row()
+           .text("🏞️ Park", "park")
+           .text("🏧 ATM", "atm")
+           .text("🛍️ Mall", "mall")
+           .row()
+           .text("⛽ Gas Station", "gas_station")
+           .text("🎥 Movie Theater", "movie_theater")
+           .text("🛒 Supermarket", "supermarket")
+           .row()
+           .text("🚉 Train Station", "train_station")
+           .text("🏦 Bank", "bank")
+           .text("🏢 Office Spaces", "office_space")
+           .row()
+           .text("🍹 Bar", "bar")
+           .text("🎡 Amusement Park", "amusement_park")
+           .row()
+           .text("🏫 School", "school")
+           .text("🎓 University", "university")
+           .text("🏛 Museum", "museum");
+
 
         await ctx.reply("Thank you😊. Please choose an option:", {
           reply_markup: inlineKeyboardForOptions,
@@ -179,7 +203,7 @@ const botCaller = async () => {
     
 
     bot.callbackQuery(
-      /(restaurant|hotel|cafe|gym|hospital|pharmacy|park|atm|mall|gas_station|movie_theater|supermarket)/,
+      /(restaurant|hotel|cafe|gym|hospital|pharmacy|park|atm|mall|gas_station|movie_theater|supermarket|train_station|bank|office_space|bar|amusement_part|school|university|museum)/,
       async (ctx) => {
         try {
           const userId = ctx.update.callback_query.from.id;
@@ -209,12 +233,12 @@ const botCaller = async () => {
                 .slice(0, 2)
                 .map((r) => `\n- ${r.author}: ${r.rating}⭐ - ${r.text}`)
                 .join("")}
-              🛠 <u>Amenities:</u> 
-                 - 🅿️ Parking: ${place.amenities.hasParking ? "Yes" : "No"}
-                 - 📶 WiFi: ${place.amenities.hasWiFi ? "Yes" : "No"}
-                 - ♿ Accessibility: ${place.amenities.isAccessible ? "Yes" : "No"}
-                 - 🍽️ Restaurant: ${place.amenities.hasRestaurant ? "Yes" : "No"}
-              `;
+                🛠 <u>Amenities:</u>\n
+                - 🅿️ Parking: ${place?.amenities?.hasParking ? "Yes" : "No"}\n
+                - 📶 WiFi: ${place?.amenities?.hasWiFi ? "Yes" : "No"}\n
+                - ♿ Accessibility: ${place?.amenities?.isAccessible ? "Yes" : "No"}\n
+             `.trim();
+
               caption = Buffer.from(caption, 'utf-8').toString();
               // Slice if exceeds Telegram's limit
               if (caption.length > 1024) {
@@ -236,23 +260,35 @@ const botCaller = async () => {
     
             // ✅ New Interactive Options
             const inlineKeyboardForOptions = new InlineKeyboard()
-              .text("🔝 Top 5", "top5")
-              .row()
-              .text("🏨 Hotel", "hotel")
-              .text("🍽️ Restaurant", "restaurant")
-              .text("☕ Cafe", "cafe")
-              .row()
-              .text("🏋️ Gym", "gym")
-              .text("🏥 Hospital", "hospital")
-              .text("💊 Pharmacy", "pharmacy")
-              .row()
-              .text("🏞️ Park", "park")
-              .text("🏧 ATM", "atm")
-              .text("🛍️ Mall", "mall")
-              .row()
-              .text("⛽ Gas Station", "gas_station")
-              .text("🎥 Movie Theater", "movie_theater")
-              .text("🛒 Supermarket", "supermarket");
+            .text("🔝 Top 5 Place", "top5")
+            .row()
+            .text("🏨 Hotel", "hotel")
+            .text("🍽️ Restaurant", "restaurant")
+            .text("☕ Cafe", "cafe")
+            .row()
+            .text("🏋️ Gym", "gym")
+            .text("🏥 Hospital", "hospital")
+            .text("💊 Pharmacy", "pharmacy")
+            .row()
+            .text("🏞️ Park", "park")
+            .text("🏧 ATM", "atm")
+            .text("🛍️ Mall", "mall")
+            .row()
+            .text("⛽ Gas Station", "gas_station")
+            .text("🎥 Movie Theater", "movie_theater")
+            .text("🛒 Supermarket", "supermarket")
+            .row()
+            .text("🚉 Train Station", "train_station")
+            .text("🏦 Bank", "bank")
+            .text("🏢 Office Spaces", "office_space")
+            .row()
+            .text("🍹 Bar", "bar")
+            .text("🎡 Amusement Park", "amusement_park")
+            .row()
+            .text("🏫 School", "school")
+            .text("🎓 University", "university")
+            .text("🏛 Museum", "museum");
+          
     
             await ctx.reply("Thank you 😊. Please choose an option:", { reply_markup: inlineKeyboardForOptions });
           } else {
@@ -274,7 +310,7 @@ const botCaller = async () => {
       const updateQuery = `UPDATE user_search SET top5 = ? WHERE user_id = ?`;
       await connection.promise().execute(updateQuery, [true, userId]); // ✅ Set it as TRUE
       await ctx.reply(
-        "Please enter your 'Top 5' request (e.g., 'Top 5 Pav Bhaji Restaurants', 'Top 5 Gyms', etc.)."
+        "Please provide your 'Top 5' request (for example, 'Top 5 Pav Bhaji Restaurants' or 'Top 5 Gyms')."
       );
     });
 
