@@ -546,3 +546,111 @@ exports.getSearchedTopFiveData = async (userId, searchQuery = null) => {
     return [null, "Failed to fetch nearby data. Please try again later."];
   }
 };
+exports.getNearbyData = async (userId, searchQuery = null) => {
+  try {
+    const selectQuery = "SELECT * FROM user_search WHERE user_id = ?";
+    const [existingUser] = await connection.promise().execute(selectQuery, [userId]);
+
+    const searchDetails = existingUser[0];
+    const { latitude, longitude, radius = 2000, nearby_search } = searchDetails;
+
+    if (!latitude || !longitude) {
+      return [null, "Latitude and Longitude are required."];
+    }
+
+    const searchParams = new URLSearchParams({
+      location: `${latitude},${longitude}`,
+      radius: radius.toString(),
+      type: nearby_search,
+      keyword: nearby_search,
+      key: googleMapsApiKey,
+    });
+
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${searchParams.toString()}`;
+    const results = await axios.get(url);
+    const data = results.data;
+    const limitedResults = data.results.slice(0, 10);
+
+    const places = await Promise.all(
+      limitedResults.map(async (place) => {
+        const address = place.vicinity || "N/A";
+        const category = place.types?.[0] || "N/A";
+
+        const distance = geolib.getDistance(
+          { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
+          {
+            latitude: parseFloat(place.geometry.location.lat),
+            longitude: parseFloat(place.geometry.location.lng),
+          }
+        );
+
+        const photoUrl = place.photos?.[0]?.photo_reference
+          ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${place.photos[0].photo_reference}&key=${googleMapsApiKey}`
+          : userIconUrl;
+
+        const openingHours = place.opening_hours
+          ? place.opening_hours.open_now
+            ? "Open Now"
+            : "Closed"
+          : "Not Mentioned";
+
+        const rating = place.rating || "N/A";
+
+        // ✅ Fetch additional details using Place Details API
+        const placeDetailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=website,formatted_phone_number,price_level,reviews&key=${googleMapsApiKey}`;
+        const placeDetails = await axios.get(placeDetailsUrl);
+        const details = placeDetails.data.result;
+
+        const website = details?.website || "Not Available";
+        const phoneNumber = details?.formatted_phone_number || "Not Available";
+
+        const priceRange =
+          details.price_level !== undefined
+            ? ["Free", "Cheap", "Moderate", "Expensive", "Very Expensive"][details.price_level]
+            : "Not Available";
+            const truncate = (text, length = 100) => 
+            text && text.length > length ? text.slice(0, length) + "..." : text;
+          
+          const reviews = details.reviews?.length
+          ? [
+              {
+                author: details.reviews[0].author_name,
+                rating: details.reviews[0].rating,
+                text: sanitizeText(details.reviews[0].text.slice(0, 150)) + "..", // Limit text to 150 chars
+              },
+            ]
+          : []
+
+
+        // ✅ Add Amenities
+        const amenities = {
+          hasParking: place.types?.some((type) => ["parking", "car_parking", "parking_lot"].includes(type)) || false,
+          hasWiFi: place.types?.some((type) => ["cafe", "internet_cafe", "library"].includes(type)) || false,
+          isAccessible: place.types?.includes("wheelchair_accessible") || false,
+          hasRestaurant: place.types?.includes("restaurant") || false,
+        };
+
+        return {
+          place_id: place.place_id,
+          name: place.name,
+          address,
+          category,
+          openingHours,
+          imageUrl: photoUrl,
+          distance: `${(distance / 1000).toFixed(2)} km`,
+          rating,
+          phoneNumber,
+          website,
+          priceRange,
+          reviews,
+          amenities,
+        };
+      })
+    );
+
+    return [places, null];
+  } catch (error) {
+    console.error("Error fetching nearby search :", error.message);
+    return [null, "Failed to fetch nearby search. Please try again later."];
+  }
+};
